@@ -8,10 +8,9 @@ class ConsumerManager(metaclass=abc.ABCMeta):
         Abstract consumer manager class with abstract methods and common properties.
     """
 
-    def __init__(self, consumer_type, host, port):
+    def __init__(self, consumer_type, consumption_config):
         self.consumer_type = consumer_type
-        self.host = host
-        self.port = port
+        self.consumption_config = consumption_config
 
     """
         @property
@@ -33,48 +32,58 @@ class ConsumerManager(metaclass=abc.ABCMeta):
 
     """
         @property
-        This property defines the port to which to connect for consumer.
+        This property defines the consumption configuration array. Basically host, port and channel_name.
+        The setter method is an abstract method and defined by each of the consumer manager subclass.
     """
 
-    def get_port(self):
-        return self._port
+    def get_consumption_config(self) -> list:
+        return self._consumption_config
 
-    def set_port(self, port):
+    @abc.abstractmethod
+    def start_consumers(self):
+        pass
 
-        if not isinstance(port, int):
-            raise ValueError("Value of parameter 'port' should be integer.")
+    @abc.abstractmethod
+    def stop_consumers(self):
+        pass
 
-        if port <= 0:
-            raise ValueError("Value of port must be greater that 0.")
-
-        self._port = port
-
-    def del_port(self):
-        del self._port
-
-    """
-        @property
-        This property defines the server host name to connect to for consumption.
-    """
-
-    def get_host(self):
-        return self._host
-
-    def set_host(self, host):
-
-        if not isinstance(host, str):
-            raise ValueError("Host should be of type string.")
-        self._host = host
-
-    def del_host(self):
-        del self._host
+    @abc.abstractmethod
+    def _check_consumption_config(self, consumption_config):
+        pass
 
     consumer_type = property(get_consumer_type, set_consumer_type, del_consumer_type)
-    port = property(get_port, set_port, del_port)
-    host = property(get_host, set_host, del_host)
+    consumption_config = property(get_consumption_config)
+
+    @consumption_config.setter
+    def consumption_config(self, consumption_config):
+        self._check_consumption_config(consumption_config)
 
 
-class AMQConsumerManager(ConsumerManager):
+class AMQQueueConsumerManager(ConsumerManager):
 
-    def __init__(self, host, port):
-        ConsumerManager.__init__(self, consumer_type='amq', host=host, port=port)
+    def __init__(self, consumption_config):
+        ConsumerManager.__init__(self, consumption_config=consumption_config, consumer_type='amqq')
+
+    def start_consumers(self):
+        pass
+
+    def stop_consumers(self):
+        pass
+
+    def _check_consumption_config(self, consumption_config):
+
+        if not isinstance(consumption_config, list):
+            raise ValueError("Consumption config must be of type list.")
+
+        for config in consumption_config:
+
+            if not isinstance(config, dict):
+                raise ValueError("Every config in consumption config must be of type dict.")
+
+            if "host" in config and "port" in config and "channel" in config:
+                continue
+            else:
+                raise KeyError("""Missing key "host" or "port" or "channel" in config dictionary.""")
+
+        else:
+            self._consumption_config = consumption_config
